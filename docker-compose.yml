@@ -1,0 +1,82 @@
+version: '3'
+
+networks:
+  phpserver:
+
+services:
+  site:
+    image: nginx:stable-alpine
+    container_name: nginx_container
+    ports:
+      - "80:80"
+    volumes:
+      - ./src:/var/www/html
+      - /Users/evgenii/Dev/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - php
+      - mysql
+    networks:
+      - phpserver
+
+  mysql:
+    image: mysql:5.7.29
+    container_name: mysql_container
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: shop_db
+      MYSQL_ROOT_PASSWORD: root
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - /Users/evgenii/Dev/databases/mysql:/var/lib/mysql
+    networks:
+      - phpserver
+
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: php_container
+    volumes:
+      - ./src:/var/www/html
+    ports:
+      - "9001:9001"
+    networks:
+      - phpserver
+
+  composer:
+    image: composer:latest
+    container_name: composer_container
+    volumes:
+      - ./src:/var/www/html
+    working_dir: /var/www/html
+    depends_on:
+      - php
+    networks:
+      - phpserver
+
+  npm:
+    image: node:13.7
+    container_name: npm_container
+    volumes:
+      - ./src:/var/www/html
+    working_dir: /var/www/html
+    entrypoint: ['npm']
+
+  phpmyadmin:
+    image: phpmyadmin
+    container_name: phpmyadmin
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mysql
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: homestead
+      MYSQL_PASSWORD: secret
+    networks:
+      - phpserver
+
